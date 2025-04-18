@@ -20,3 +20,5 @@ numpy==1.26.2
 # Other Utilities (Check if truly needed)
 scipy==1.12.0 # Keep for now, might be needed by diffusers/transformers indirectly
 requests==2.31.0 # Keep for now, might be needed for model downloads if not pre-cached
+torchsde==0.2.6 # Potentially needed by K Diffusion samplers
+opencv-contrib-python # Potentially needed for image processing dependencies
