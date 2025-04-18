@@ -164,9 +164,9 @@ RunPod ワーカーをローカルでテストするには、`runpod` ライブ�
     python myproject/runpod_handler.py
     ```
     *   `runpod` ライブラリは `test_input.json` を検出し、それを `job` として `runpod_worker` 関数に渡します。
-    *   コンソールに処理ログと最終的な出力（成功時は動画のBase64を含むJSON、失敗時はエラーJSON）が表示されます。
+    *   コンソールに処理ログと最終的な出力（成功時は **アップロードを試行した旨のメッセージ** または **URLを含むJSON**、失敗時はエラーJSON）が表示されます。ローカルテストでは、環境変数が設定されていないため、実際のアップロードは失敗する可能性がありますが、ハンドラ関数の基本的な動作は確認できます。
 
-*   **Dockerコンテナ内でのローカルテスト:** Dockerコンテナを実行してテストすることも可能です。`test_input.json` をコンテナ内にコピーするか、ボリュームマウントする必要があります。
+*   **Dockerコンテナ内でのローカルテスト:** Dockerコンテナを実行してテストすることも可能です。`test_input.json` をコンテナ内にコピーするか、ボリュームマウントする必要があります。S3/B2の環境変数を `-e` オプションで渡すことで、コンテナ内でのアップロードテストも可能です。
     ```bash
     # test_input.json をマウントして実行する例 (Linux/macOS)
     docker run --rm --gpus all -v "$(pwd)/test_input.json:/app/test_input.json" my-video-app
