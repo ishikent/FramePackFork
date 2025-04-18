@@ -8,7 +8,7 @@
 
 FramePackは、初期画像とテキストプロンプトから動画を段階的に生成する、次フレーム（次フレームセクション）予測型のニューラルネットワーク構造です。
 
-このバージョンは、RunPod Serverless プラットフォーム上でAPIエンドポイントとして動作するように設定されています (`myproject/runpod_handler.py`)。Dockerコンテナとしてビルドし、RunPodにデプロイして使用します。
+このバージョンは、RunPod Serverless プラットフォーム上でAPIエンドポイントとして動作するように設定されています (`myproject/runpod_handler.py`)。Dockerコンテナとしてビルドし、RunPodにデプロイして使用します。生成された動画は、設定されたS3互換ストレージ（例: Backblaze B2）にアップロードされ、APIレスポンスとしてそのURLが返されます。
 
 ## RunPod Serverless 向け Docker セットアップとデプロイ手順
 
@@ -19,6 +19,7 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
 *   Dockerがインストールされていること: [Dockerを入手](https://docs.docker.com/get-docker/)
 *   Docker Hub や GitHub Container Registry などのコンテナリポジトリのアカウント。
 *   RunPod アカウント: [RunPod](https://runpod.io)
+*   S3互換のオブジェクトストレージ（例: AWS S3, Backblaze B2）のアカウントとバケット、およびアクセスキー。
 *   **GPUアクセラレーションを利用する場合 (RunPod側で設定):**
     *   NVIDIA製GPUが搭載されていること。
     *   ホストマシンに対応するNVIDIAドライバがインストールされていること。
