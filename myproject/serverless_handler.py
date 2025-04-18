@@ -463,6 +463,7 @@ def lambda_handler(event, context):
         cfg = float(body.get('cfg', 1.0)) # 基本的に変更しない
         gs = float(body.get('gs', 10.0))
         rs = float(body.get('rs', 0.0)) # 基本的に変更しない
+        # gpu_memory_preservation を body から取得、なければデフォルト値 6.0 を使用
         gpu_memory_preservation = float(body.get('gpu_memory_preservation', 6.0))
         use_teacache = bool(body.get('use_teacache', True))
 
@@ -488,6 +489,7 @@ def lambda_handler(event, context):
             cfg=cfg,
             gs=gs,
             rs=rs,
+            # パースした値を渡す
             gpu_memory_preservation=gpu_memory_preservation,
             use_teacache=use_teacache,
             # グローバルなモデルオブジェクトを渡す
