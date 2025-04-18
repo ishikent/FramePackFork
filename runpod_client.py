@@ -37,6 +37,7 @@ def run_video_generation(endpoint_id: str, input_data: dict):
     endpoint = runpod.Endpoint(endpoint_id)
 
     print("Submitting job...")
+    job = None # Initialize job to None before the try block
     try:
         # 非同期でジョブを実行
         job = endpoint.run({"input": input_data})
@@ -63,18 +64,6 @@ def run_video_generation(endpoint_id: str, input_data: dict):
                 except Exception as e:
                     return {"error": f"Job status: {status}, failed to get output details: {e}"}
             elif status == "IN_QUEUE" or status == "IN_PROGRESS":
-                # # タイムアウトチェック (削除)
-                # if time.time() - start_time > JOB_TIMEOUT:
-                #     print(f"Job timed out after {JOB_TIMEOUT} seconds.")
-                #     # 必要であればジョブをキャンセル
-                #     # print("Attempting to cancel job...")
-                #     # try:
-                #     #     job.cancel() # Use the job object
-                #     #     print("Job cancellation request sent.")
-                #     # except Exception as cancel_err:
-                #     #     print(f"Failed to cancel job: {cancel_err}")
-                #     return {"error": f"Job timed out after {JOB_TIMEOUT} seconds."}
-
                 # 次のポーリングまで待機
                 time.sleep(POLL_INTERVAL)
             else:
@@ -82,9 +71,42 @@ def run_video_generation(endpoint_id: str, input_data: dict):
                 print(f"Unexpected job status: {status}")
                 return {"error": f"Unexpected job status: {status}"}
 
+    except KeyboardInterrupt: # Catch Ctrl+C
+        print("\nKeyboardInterrupt detected. Canceling the job...")
+        if job: # Check if a job object exists
+            try:
+                job.cancel() # Use the job object
+                print("Job cancellation request sent.")
+                # Give RunPod a moment to process cancellation before checking status again or exiting
+                time.sleep(2)
+                # Optionally check status one last time
+                try:
+                    final_status = job.status()
+                    print(f"Final job status after cancel request: {final_status}")
+                except Exception:
+                    print("Could not retrieve final status after cancellation.")
+                return {"error": "Job cancelled by user."}
+            except Exception as cancel_err:
+                print(f"Failed to send cancel request: {cancel_err}")
+                return {"error": f"Job cancellation failed: {cancel_err}"}
+        else:
+            print("No active job to cancel.")
+            return {"error": "Cancellation requested but no job was active."}
+
     except Exception as e:
         print(f"An error occurred during API interaction: {e}")
-        return {"error": str(e)}
+        # If the error happened before job submission, job might be None
+        error_msg = str(e)
+        if job:
+             # If job exists, try to get more details if it failed due to the error
+             try:
+                 status = job.status()
+                 if status in ["FAILED", "CANCELLED"]:
+                     output = job.output()
+                     error_msg += f" | Job Status: {status} | Details: {output}"
+             except Exception:
+                 pass # Ignore errors trying to get status/output after another error
+        return {"error": error_msg}
 
 # --- メイン処理 ---
 if __name__ == "__main__":
