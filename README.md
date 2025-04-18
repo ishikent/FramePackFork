@@ -148,6 +148,59 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
         *   `/status` エンドポイントから取得した `output.video_url` を使用して、クライアント側で動画ファイルを直接ダウンロードします。
         *   このURLは通常、署名付きURLではないため、バケットのパーミッション設定によっては公開アクセス可能になっている必要があります（または、RunPodがプロキシするなどの仕組みがあるかもしれません。RunPodのドキュメントを確認してください）。
 
+## クライアントスクリプト (`runpod_client.py`) の利用
+
+リポジトリには、RunPod Serverless APIを簡単に呼び出すためのPythonクライアントスクリプト (`runpod_client.py`) が含まれています。このスクリプトは、ジョブの投入、ステータスのポーリング、結果の取得を自動で行います。
+
+**前提条件:**
+
+*   Python 3.x がインストールされていること。
+*   `runpod` Pythonライブラリがインストールされていること:
+    ```bash
+    pip install runpod
+    ```
+*   RunPod API Key が必要です。RunPodのユーザー設定ページで生成できます。
+
+**使い方:**
+
+1.  **APIキーの設定:**
+    *   **推奨:** 環境変数 `RUNPOD_API_KEY` にAPIキーを設定します。
+        ```bash
+        # Linux/macOS
+        export RUNPOD_API_KEY="YOUR_RUNPOD_API_KEY"
+        # Windows PowerShell
+        # $env:RUNPOD_API_KEY="YOUR_RUNPOD_API_KEY"
+        ```
+    *   **代替:** スクリプト実行時に `--api_key` 引数で指定します。
+
+2.  **スクリプトの実行:**
+    *   ターミナルを開き、プロジェクトのルートディレクトリに移動します。
+    *   以下のコマンド形式で実行します。
+        ```bash
+        python runpod_client.py YOUR_ENDPOINT_ID path/to/your/image.png -p "Your prompt here" [オプション...]
+        ```
+    *   **必須引数:**
+        *   `YOUR_ENDPOINT_ID`: RunPod APIエンドポイントのID。
+        *   `path/to/your/image.png`: 入力として使用する画像ファイルのパス。
+        *   `-p` または `--prompt`: 動画生成に使用するプロンプト。
+    *   **オプション引数 (一部):**
+        *   `-n` または `--negative_prompt`: ネガティブプロンプト。
+        *   `-s` または `--seed`: 乱数シード (整数)。
+        *   `-l` または `--length`: 動画の長さ（秒）。
+        *   `--steps`: 推論ステップ数。
+        *   `--cfg`: CFGスケール。
+        *   `--gpu_mem`: GPUメモリ保存値。
+        *   `--api_key`: RunPod APIキー (環境変数がない場合)。
+
+    *   **実行例:**
+        ```bash
+        python runpod_client.py abc123xyz my_cat.jpg -p "A cat wearing a tiny hat" -s 42 -l 2.5
+        ```
+
+3.  **結果の確認:**
+    *   スクリプトはジョブのステータスを定期的に表示します (`Current job status: ...`)。
+    *   ジョブが完了すると、最終的な結果（成功した場合は動画URLを含むJSON、失敗した場合はエラー情報を含むJSON）がコンソールに出力されます。
+
 ## ローカルでのテスト (RunPod Worker)
 
 RunPod Serverless にデプロイする前に、ローカル環境でワーカーハンドラの動作を確認できます。主に2つの方法があります。
