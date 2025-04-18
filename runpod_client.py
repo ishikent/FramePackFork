@@ -15,8 +15,6 @@ from pathlib import Path
 
 # ポーリング間隔（秒）
 POLL_INTERVAL = 5
-# 結果取得のタイムアウト（秒）- ジョブが完了するまで待つ最大時間
-JOB_TIMEOUT = 600 # 10分 (動画生成時間に合わせて調整)
 
 # --- 関数 ---
 def encode_image_to_base64(image_path: Path) -> str:
@@ -65,17 +63,17 @@ def run_video_generation(endpoint_id: str, input_data: dict):
                 except Exception as e:
                     return {"error": f"Job status: {status}, failed to get output details: {e}"}
             elif status == "IN_QUEUE" or status == "IN_PROGRESS":
-                # タイムアウトチェック
-                if time.time() - start_time > JOB_TIMEOUT:
-                    print(f"Job timed out after {JOB_TIMEOUT} seconds.")
-                    # 必要であればジョブをキャンセル
-                    # print("Attempting to cancel job...")
-                    # try:
-                    #     job.cancel() # Use the job object
-                    #     print("Job cancellation request sent.")
-                    # except Exception as cancel_err:
-                    #     print(f"Failed to cancel job: {cancel_err}")
-                    return {"error": f"Job timed out after {JOB_TIMEOUT} seconds."}
+                # # タイムアウトチェック (削除)
+                # if time.time() - start_time > JOB_TIMEOUT:
+                #     print(f"Job timed out after {JOB_TIMEOUT} seconds.")
+                #     # 必要であればジョブをキャンセル
+                #     # print("Attempting to cancel job...")
+                #     # try:
+                #     #     job.cancel() # Use the job object
+                #     #     print("Job cancellation request sent.")
+                #     # except Exception as cancel_err:
+                #     #     print(f"Failed to cancel job: {cancel_err}")
+                #     return {"error": f"Job timed out after {JOB_TIMEOUT} seconds."}
 
                 # 次のポーリングまで待機
                 time.sleep(POLL_INTERVAL)
