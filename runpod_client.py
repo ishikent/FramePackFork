@@ -41,26 +41,26 @@ def run_video_generation(endpoint_id: str, input_data: dict):
     print("Submitting job...")
     try:
         # 非同期でジョブを実行
-        run_request = endpoint.run({"input": input_data})
-        job_id = run_request.id
-        print(f"Job submitted successfully. Job ID: {job_id}")
+        job = endpoint.run({"input": input_data})
+        # job_id = run_request.id # The job object itself is returned
+        print(f"Job submitted successfully. Job ID: {job.id}") # Access id directly from job object
 
         start_time = time.time()
         while True:
             # ステータスを確認
-            status = run_request.status()
+            status = job.status() # Use the job object
             print(f"Current job status: {status} (Elapsed: {time.time() - start_time:.2f}s)")
 
             if status == "COMPLETED":
                 print("Job completed!")
                 # 結果を取得 (タイムアウトなし、完了しているので)
-                output = run_request.output()
+                output = job.output() # Use the job object
                 return output
             elif status in ["FAILED", "CANCELLED"]:
                 print(f"Job failed or was cancelled. Status: {status}")
                 # エラーの場合も output() を試みる (エラーメッセージが含まれる可能性があるため)
                 try:
-                    output = run_request.output()
+                    output = job.output() # Use the job object
                     return {"error": f"Job status: {status}", "details": output}
                 except Exception as e:
                     return {"error": f"Job status: {status}, failed to get output details: {e}"}
@@ -71,7 +71,7 @@ def run_video_generation(endpoint_id: str, input_data: dict):
                     # 必要であればジョブをキャンセル
                     # print("Attempting to cancel job...")
                     # try:
-                    #     run_request.cancel()
+                    #     job.cancel() # Use the job object
                     #     print("Job cancellation request sent.")
                     # except Exception as cancel_err:
                     #     print(f"Failed to cancel job: {cancel_err}")
