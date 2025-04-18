@@ -4,8 +4,8 @@ import runpod
 import traceback
 from runpod.serverless.utils import rp_upload # Import the upload utility
 
-# 既存のLambdaハンドラとモデル初期化関数をインポート
-from myproject.serverless_handler import lambda_handler, initialize_models, models_initialized
+# 既存のLambdaハンドラとモデル初期化関数をインポート (同じディレクトリ内)
+from serverless_handler import lambda_handler, initialize_models, models_initialized
 
 print("RunPod Worker Cold Boot")
 
