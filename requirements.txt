@@ -13,3 +13,14 @@ torchsde==0.2.6
 einops
 opencv-contrib-python
 safetensors
+transformers>=4.38.0
+diffusers>=0.27.0
+torch>=2.0 # ベースイメージに合わせるか、必要なバージョンを指定
+einops
+numpy
+Pillow
+accelerate
+safetensors
+sentencepiece # LlamaTokenizer用
+protobuf    # LlamaTokenizer用
+# 他に依存関係があれば追加
