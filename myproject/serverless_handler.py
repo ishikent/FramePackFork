@@ -143,9 +143,20 @@ def initialize_models():
 
 @torch.no_grad()
 def generate_video_sync(
+    # --- モデルオブジェクト (デフォルト値なし) ---
+    text_encoder_model,
+    text_encoder_2_model,
+    tokenizer_inst,
+    tokenizer_2_inst,
+    vae_model,
+    feature_extractor_inst,
+    image_encoder_model,
+    transformer_model,
+    # --- 必須パラメータ (デフォルト値なし) ---
     input_image_np: np.ndarray,
     prompt: str,
-    n_prompt: str = "", # デフォルトは空文字
+    # --- オプションパラメータ (デフォルト値あり) ---
+    n_prompt: str = "",
     seed: int = 31337,
     total_second_length: float = 5.0,
     latent_window_size: int = 9,
@@ -155,15 +166,6 @@ def generate_video_sync(
     rs: float = 0.0,
     gpu_memory_preservation: float = 6.0,
     use_teacache: bool = True,
-    # モデルオブジェクト
-    text_encoder_model,
-    text_encoder_2_model,
-    tokenizer_inst,
-    tokenizer_2_inst,
-    vae_model,
-    feature_extractor_inst,
-    image_encoder_model,
-    transformer_model
 ) -> tuple[str, str]: # (output_video_path, input_image_save_path) を返すように変更
     """
     入力パラメータとモデルオブジェクトを受け取り、動画を生成して一時ファイルパスを返す同期関数。
