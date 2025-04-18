@@ -43,7 +43,7 @@ def run_video_generation(endpoint_id: str, input_data: dict):
         # 非同期でジョブを実行
         job = endpoint.run({"input": input_data})
         # job_id = run_request.id # The job object itself is returned
-        print(f"Job submitted successfully. Job ID: {job.id}") # Access id directly from job object
+        # print(f"Job submitted successfully. Job ID: {job.id}") # Access id directly from job object - Removed as 'id' attribute might not exist
 
         start_time = time.time()
         while True:
