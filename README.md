@@ -2,25 +2,28 @@
     <img src="https://github.com/user-attachments/assets/2cc030b4-87e1-40a0-b5bf-1b7d6b62820b" width="300">
 </p>
 
-# FramePack (Docker版)
+# FramePack (Docker版 / RunPod Serverless 対応)
 
 このリポジトリは、["Packing Input Frame Context in Next-Frame Prediction Models for Video Generation"](https://lllyasviel.github.io/frame_pack_gitpage/) の公式実装をベースに、Dockerコンテナ内で実行できるように調整したコードを含んでいます。
 
 FramePackは、初期画像とテキストプロンプトから動画を段階的に生成する、次フレーム（次フレームセクション）予測型のニューラルネットワーク構造です。
 
-このバージョンは、Dockerコンテナ内でPythonスクリプト (`myproject/serverless_handler.py`) を介して実行するように設定されており、コンテナ化された環境でのテストやデプロイに適しています。
+このバージョンは、RunPod Serverless プラットフォーム上でAPIエンドポイントとして動作するように設定されています (`myproject/runpod_handler.py`)。Dockerコンテナとしてビルドし、RunPodにデプロイして使用します。
 
-## Dockerのセットアップと実行手順
+## RunPod Serverless 向け Docker セットアップとデプロイ手順
 
-ここでは、Dockerを使用してアプリケーションをビルドし、実行する手順を説明します。
+ここでは、RunPod Serverless で使用するために Docker イメージをビルドし、デプロイする手順を説明します。
 
 **前提条件:**
 
 *   Dockerがインストールされていること: [Dockerを入手](https://docs.docker.com/get-docker/)
-*   **GPUアクセラレーションを利用する場合:**
+*   Docker Hub や GitHub Container Registry などのコンテナリポジトリのアカウント。
+*   RunPod アカウント: [RunPod](https://runpod.io)
+*   **GPUアクセラレーションを利用する場合 (RunPod側で設定):**
     *   NVIDIA製GPUが搭載されていること。
     *   ホストマシンに対応するNVIDIAドライバがインストールされていること。
     *   NVIDIA Container Toolkitがインストール・設定されていること: [インストールガイド](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+    *(注意: RunPod Serverless を利用する場合、GPU環境はRunPod側で提供されるため、ローカルでのGPU設定はビルドやローカルテスト時のみ関係します)*
 
 **手順:**
 
@@ -32,7 +35,8 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
         ├── Dockerfile
         ├── requirements.txt
         ├── myproject/
-        │   └── serverless_handler.py
+        │   ├── serverless_handler.py # 内部ロジックで使用
+        │   └── runpod_handler.py     # RunPod エントリーポイント
         │   └── ... (その他必要なファイル)
         └── diffusers_helper/
             └── __init__.py
@@ -50,11 +54,11 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
         *   `.`: ビルドコンテキストとしてカレントディレクトリを指定します。
 
     *   **ビルドに関する重要な注意点:**
-        *   **モデルの事前ダウンロード:** `Dockerfile` には、ビルド中にモデルをダウンロードするオプションのステップ（ステップ7）が含まれています。これを有効にすると、ビルド時間が大幅に増加し（非常に長くなる可能性があります）、イメージサイズも非常に大きく（数十GB）なりますが、コンテナの初回起動は速くなります。`Dockerfile` でこのステップをコメントアウトすると、モデルは初回実行時にダウンロードされます（リソースが限られた環境ではタイムアウトの原因になる可能性があります）。
-        *   **Hugging Face トークン (オプション):** モデルが認証を必要とする場合（例: プライベートリポジトリ）、ビルド時に `--build-arg` を使用してHugging Faceトークンを提供する必要があります:
+        *   **モデルの事前ダウンロード:** `Dockerfile` には、ビルド中にモデルをダウンロードするオプションのステップ（ステップ7）が含まれています。これを有効にすると、ビルド時間が大幅に増加し（非常に長くなる可能性があります）、イメージサイズも非常に大きく（数十GB）なりますが、コンテナの初回起動は速くなります。`Dockerfile` でこのステップをコメントアウトすると、モデルは初回実行時にダウンロードされます（RunPodのコールドスタート時間が長くなる可能性があります）。**RunPod Serverless では、通常は事前ダウンロードが推奨されます。**
+        *   **Hugging Face トークン (オプション):** モデルが認証を必要とする場合（例: プライベートリポジトリ）、ビルド時に `--build-arg` を使用して Hugging Face トークンを提供する必要があります:
             ```bash
             # Linux/macOS の例 (事前にトークンを設定)
-            # export HF_TOKEN="hf_YOUR_TOKEN_HERE"
+            # export HF_TOKEN="hf_YOUR_TOKEN_HERE" # 実際のトークンに置き換える
             # docker build --build-arg HF_TOKEN=${HF_TOKEN} -t my-video-app .
 
             # Windows PowerShell の例 (事前にトークンを設定)
@@ -62,26 +66,77 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
             # docker build --build-arg HF_TOKEN=$env:HF_TOKEN -t my-video-app .
             ```
 
-3.  **Dockerコンテナの実行:**
-    *   イメージのビルドが完了したら、コンテナを実行します。このコマンドは `myproject/serverless_handler.py` で定義されているローカルテストを実行します。
-    *   **GPUを使用する場合:**
+3.  **Dockerイメージのプッシュ:**
+    *   ビルドしたイメージをコンテナリポジトリにプッシュします。
         ```bash
-        docker run --rm --gpus all my-video-app
+        # 例: Docker Hub の場合 (事前に docker login が必要)
+        docker tag my-video-app your-dockerhub-username/my-video-app:latest
+        docker push your-dockerhub-username/my-video-app:latest
         ```
-    *   **CPUのみを使用する場合:**
+        *   `your-dockerhub-username/my-video-app:latest` は、ご自身のレジストリとリポジトリ名に合わせて変更してください。
+
+4.  **RunPod Serverless の設定:**
+    *   RunPod コンソール ([https://runpod.io/console/serverless/user/templates](https://runpod.io/console/serverless/user/templates)) に移動します。
+    *   "New Template" をクリックし、プッシュしたDockerイメージ名 (`your-dockerhub-username/my-video-app:latest` など) を指定します。プライベートリポジトリの場合は、RunPodのユーザー設定で認証情報を追加してください。
+    *   必要に応じてコンテナのディスクサイズや環境変数 (例: `HF_TOKEN`) を設定します。
+    *   次に、APIエンドポイントを作成します ([https://runpod.io/console/serverless/user/apis](https://runpod.io/console/serverless/user/apis))。
+    *   "New API" をクリックし、先ほど作成したテンプレートを選択します。
+    *   アイドル時のワーカー数 (Idle Workers) や最大ワーカー数 (Max Workers) などを設定します。**デバッグ目的以外では、アイドルワーカー数を0に設定することを推奨します（課金を避けるため）。**
+    *   APIエンドポイントが作成されると、エンドポイントIDが払い出されます。
+
+5.  **APIのテスト:**
+    *   `curl` や他のAPIクライアントを使用して、作成したエンドポイントにリクエストを送信します。RunPod API Key が必要です（ユーザー設定で生成）。
         ```bash
-        docker run --rm my-video-app
+        # リクエスト例 (your_endpoint_id と Your_RunPod_API_Key を置き換える)
+        curl -X POST https://api.runpod.ai/v2/your_endpoint_id/run \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer Your_RunPod_API_Key' \
+          -d '{
+            "input": {
+              "input_image_b64": "ここに画像のBase64文字列...",
+              "prompt": "A beautiful landscape painting",
+              "seed": 123,
+              "total_second_length": 3.0
+            }
+          }'
         ```
-        *   `--rm`: コンテナ終了時に自動的にコンテナを削除します。
-        *   `--gpus all`: ホストの全てのGPUをコンテナから利用可能にします（NVIDIA Container Toolkitが必要です）。
+    *   上記コマンドはジョブIDを返します。ステータス確認エンドポイント (`/status/{job_id}`) を使用して結果を取得します。
 
-    *   **期待される出力:**
-        *   モデルの初期化と動画生成の進捗を示すログがコンソールに出力されます。
-        *   成功した場合、成功メッセージが表示され、`local_test_output.mp4` がコンテナ**内部**に保存されたことが示されます。
-        *   エラーが発生した場合、エラーメッセージとスタックトレースが表示されます。
+## ローカルでのテスト (RunPod Worker)
 
-4.  **生成された動画ファイルへのアクセス:**
-    *   生成された `local_test_output.mp4` は、コンテナ内の `/app/local_test_output.mp4` に作成されます。ホストマシンからアクセスするには、以下のいずれかの方法を使用します。
+RunPod ワーカーをローカルでテストするには、`runpod` ライブラリのローカルテスト機能を使用します。
+
+1.  プロジェクトのルートディレクトリに `test_input.json` という名前のファイルを作成します。内容はAPIに送る `"input"` 部分と同じにします。
+    ```json
+    {
+        "input": {
+            "input_image_b64": "ここにテスト用の短い画像のBase64文字列...",
+            "prompt": "A test prompt",
+            "seed": 456,
+            "total_second_length": 1.0
+        }
+    }
+    ```
+    *(注意: `input_image_b64` には実際のBase64エンコードされた画像データを入れてください。テスト用に小さな画像を使うと良いでしょう。)*
+
+2.  Dockerコンテナをビルドせずに、ローカルのPython環境（必要な依存関係がインストールされている）で直接 `runpod_handler.py` を実行します。
+    ```bash
+    # プロジェクトルートから実行
+    python myproject/runpod_handler.py
+    ```
+    *   `runpod` ライブラリは `test_input.json` を検出し、それを `job` として `runpod_worker` 関数に渡します。
+    *   コンソールに処理ログと最終的な出力（成功時は動画のBase64を含むJSON、失敗時はエラーJSON）が表示されます。
+
+*   **Dockerコンテナ内でのローカルテスト:** Dockerコンテナを実行してテストすることも可能です。`test_input.json` をコンテナ内にコピーするか、ボリュームマウントする必要があります。
+    ```bash
+    # test_input.json をマウントして実行する例 (Linux/macOS)
+    docker run --rm --gpus all -v "$(pwd)/test_input.json:/app/test_input.json" my-video-app
+    ```
+
+---
+
+*(以下、元のREADMEにあったアクセス方法などは削除またはコメントアウト)*
+<!--
     *   **方法A: 実行後にコピー (`docker cp` を使用)**
         1.  コンテナIDを調べます（`docker ps -a` を実行して最近のコンテナをリスト表示します）。
         2.  ファイルをコピーします: `docker cp <コンテナID>:/app/local_test_output.mp4 ./` （カレントディレクトリにコピーされます）。
@@ -96,3 +151,4 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
             # docker run --rm --gpus all -v "${PWD}/output:/app" my-video-app
             ```
         *   これにより、ホストマシンの `output` フォルダがコンテナ内の `/app` にマウントされ、`local_test_output.mp4` がホストの `output` フォルダ内に直接作成されます。
+-->

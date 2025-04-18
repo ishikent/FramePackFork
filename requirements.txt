@@ -5,6 +5,9 @@ transformers==4.46.2
 einops
 safetensors
 
+# RunPod Serverless
+runpod
+
 # Tokenizer Dependencies
 sentencepiece==0.2.0
 protobuf # Added for LlamaTokenizer
