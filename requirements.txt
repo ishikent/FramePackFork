@@ -1,26 +1,19 @@
+# Core ML Libraries (PyTorch is provided by base image)
 accelerate==1.6.0
 diffusers==0.33.1
 transformers==4.46.2
-gradio==5.23.0
+einops
+safetensors
+
+# Tokenizer Dependencies
 sentencepiece==0.2.0
+protobuf # Added for LlamaTokenizer
+
+# Image/Video Handling
 pillow==11.1.0
 av==12.1.0
 numpy==1.26.2
-scipy==1.12.0
-requests==2.31.0
-torchsde==0.2.6
 
-einops
-opencv-contrib-python
-safetensors
-transformers>=4.38.0
-diffusers>=0.27.0
-torch>=2.0 # ベースイメージに合わせるか、必要なバージョンを指定
-einops
-numpy
-Pillow
-accelerate
-safetensors
-sentencepiece # LlamaTokenizer用
-protobuf    # LlamaTokenizer用
-# 他に依存関係があれば追加
+# Other Utilities (Check if truly needed)
+scipy==1.12.0 # Keep for now, might be needed by diffusers/transformers indirectly
+requests==2.31.0 # Keep for now, might be needed for model downloads if not pre-cached
