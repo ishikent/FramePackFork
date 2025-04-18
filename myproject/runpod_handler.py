@@ -1,10 +1,22 @@
 import os
 import json
+import sys # sys モジュールをインポート
 import runpod
 import traceback
 from runpod.serverless.utils import rp_upload # Import the upload utility
 
+# --- プロジェクトルートを Python パスに追加 ---
+# このスクリプト (runpod_handler.py) の絶対パスを取得
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# プロジェクトルート (myproject ディレクトリの親) を取得
+project_root = os.path.dirname(current_dir)
+# sys.path の先頭に追加 (既になければ)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+# -----------------------------------------
+
 # 既存のLambdaハンドラとモデル初期化関数をインポート (同じディレクトリ内)
+# sys.path を変更したので、 serverless_handler は diffusers_helper を見つけられるはず
 from serverless_handler import lambda_handler, initialize_models, models_initialized
 
 print("RunPod Worker Cold Boot")
