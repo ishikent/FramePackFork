@@ -35,6 +35,7 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
         your_project_directory/
         ├── Dockerfile
         ├── requirements.txt
+        ├── test_input.json (ローカルテスト用)
         ├── myproject/
         │   ├── serverless_handler.py # 内部ロジックで使用
         │   └── runpod_handler.py     # RunPod エントリーポイント
@@ -42,8 +43,8 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
         └── diffusers_helper/
             └── __init__.py
             └── ... (その他必要なヘルパーファイル)
-+    *   `requirements.txt` に `boto3` が含まれていることを確認してください（S3アップロードに必要）。
-         ```
+        ```
+    *   `requirements.txt` に `boto3` が含まれていることを確認してください（S3アップロードに必要）。
 
 2.  **Dockerイメージのビルド:**
     *   ターミナルまたはコマンドプロンプトを開きます。
@@ -81,6 +82,11 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
     *   RunPod コンソール ([https://runpod.io/console/serverless/user/templates](https://runpod.io/console/serverless/user/templates)) に移動します。
     *   "New Template" をクリックし、プッシュしたDockerイメージ名 (`your-dockerhub-username/my-video-app:latest` など) を指定します。プライベートリポジトリの場合は、RunPodのユーザー設定で認証情報を追加してください。
     *   必要に応じてコンテナのディスクサイズや環境変数 (例: `HF_TOKEN`) を設定します。
+    *   **重要: S3/B2 アップロード用の環境変数を設定します:**
+        *   `BUCKET_ACCESS_KEY_ID`: 使用するストレージのアクセスキーID (例: B2のKey ID)。
+        *   `BUCKET_SECRET_ACCESS_KEY`: 使用するストレージのシークレットアクセスキー (例: B2のApplication Key)。
+        *   `BUCKET_ENDPOINT_URL`: **`https://<バケット名>.<S3エンドポイントURL>`** の形式で指定します (例: `https://my-video-outputs.s3.us-west-004.backblazeb2.com`)。
+            *   *注意: RunPodのドキュメントに従い、URLにバケット名を含めます。*
     *   次に、APIエンドポイントを作成します ([https://runpod.io/console/serverless/user/apis](https://runpod.io/console/serverless/user/apis))。
     *   "New API" をクリックし、先ほど作成したテンプレートを選択します。
     *   アイドル時のワーカー数 (Idle Workers) や最大ワーカー数 (Max Workers) などを設定します。**デバッグ目的以外では、アイドルワーカー数を0に設定することを推奨します（課金を避けるため）。**
@@ -129,18 +135,18 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
               "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
               "input": { ... },
               "output": { // ★★★ ここに結果が入る ★★★
-                "message": "Video generated successfully.",
-                "output_video_b64": "ここに非常に長いBase64エンコードされた動画データ..."
+                "message": "Video generated and uploaded successfully.",
+                "video_url": "https://your-bucket.s3.region.backblazeb2.com/job_id/image.png" // 生成された動画へのURL
               },
               "status": "COMPLETED"
             }
             ```
-        *   **`output.output_video_b64` の値が、生成された動画の Base64 エンコードされたデータです。**
+        *   **`output.video_url` の値が、生成されS3互換ストレージにアップロードされた動画ファイルへのURLです。**
         *   もし処理が**失敗**した場合は、`status` が `FAILED` になり、`output` にはエラーメッセージが含まれます（例: `{"error": "エラー内容"}`）。
 
-    3.  **動画データのデコードと保存:**
-        *   `/status` エンドポイントから取得した `output_video_b64` の Base64 文字列をデコードします。
-        *   デコードしたバイナリデータを `.mp4` ファイルとして保存すれば、動画ファイルとして利用できます。
+    3.  **動画ファイルのダウンロード:**
+        *   `/status` エンドポイントから取得した `output.video_url` を使用して、クライアント側で動画ファイルを直接ダウンロードします。
+        *   このURLは通常、署名付きURLではないため、バケットのパーミッション設定によっては公開アクセス可能になっている必要があります（または、RunPodがプロキシするなどの仕組みがあるかもしれません。RunPodのドキュメントを確認してください）。
 
 ## ローカルでのテスト (RunPod Worker)
 
@@ -169,8 +175,13 @@ RunPod ワーカーをローカルでテストするには、`runpod` ライブ�
 
 *   **Dockerコンテナ内でのローカルテスト:** Dockerコンテナを実行してテストすることも可能です。`test_input.json` をコンテナ内にコピーするか、ボリュームマウントする必要があります。S3/B2の環境変数を `-e` オプションで渡すことで、コンテナ内でのアップロードテストも可能です。
     ```bash
-    # test_input.json をマウントして実行する例 (Linux/macOS)
-    docker run --rm --gpus all -v "$(pwd)/test_input.json:/app/test_input.json" my-video-app
+    # test_input.json と環境変数を渡して実行する例 (Linux/macOS)
+    docker run --rm --gpus all \
+      -v "$(pwd)/test_input.json:/app/test_input.json" \
+      -e BUCKET_ACCESS_KEY_ID="YOUR_B2_KEY_ID" \
+      -e BUCKET_SECRET_ACCESS_KEY="YOUR_B2_APP_KEY" \
+      -e BUCKET_ENDPOINT_URL="https://your-bucket.s3.region.backblazeb2.com" \
+      my-video-app
     ```
 
 ---
