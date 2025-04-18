@@ -14,7 +14,7 @@ from pathlib import Path
 # runpod.api_key = "YOUR_RUNPOD_API_KEY"
 
 # ポーリング間隔（秒）
-POLL_INTERVAL = 5
+POLL_INTERVAL = 20
 
 # --- 関数 ---
 def encode_image_to_base64(image_path: Path) -> str:
