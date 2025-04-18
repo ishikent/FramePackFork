@@ -84,23 +84,61 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
     *   アイドル時のワーカー数 (Idle Workers) や最大ワーカー数 (Max Workers) などを設定します。**デバッグ目的以外では、アイドルワーカー数を0に設定することを推奨します（課金を避けるため）。**
     *   APIエンドポイントが作成されると、エンドポイントIDが払い出されます。
 
-5.  **APIのテスト:**
-    *   `curl` や他のAPIクライアントを使用して、作成したエンドポイントにリクエストを送信します。RunPod API Key が必要です（ユーザー設定で生成）。
-        ```bash
-        # リクエスト例 (your_endpoint_id と Your_RunPod_API_Key を置き換える)
-        curl -X POST https://api.runpod.ai/v2/your_endpoint_id/run \
-          -H 'Content-Type: application/json' \
-          -H 'Authorization: Bearer Your_RunPod_API_Key' \
-          -d '{
-            "input": {
-              "input_image_b64": "ここに画像のBase64文字列...",
-              "prompt": "A beautiful landscape painting",
-              "seed": 123,
-              "total_second_length": 3.0
+5.  **APIの利用 (非同期プロセス):**
+
+    RunPod Serverless API は非同期で動作します。動画生成を開始し、結果を取得するには以下の手順が必要です。
+
+    1.  **ジョブの開始 (`/run` エンドポイント):**
+        *   まず、`/run` エンドポイントに POST リクエストを送信して、動画生成ジョブを開始します。リクエストボディの `input` にパラメータを指定します。RunPod API Key が必要です（ユーザー設定で生成）。
+            ```bash
+            # リクエスト例 (your_endpoint_id と Your_RunPod_API_Key を置き換える)
+            curl -X POST https://api.runpod.ai/v2/your_endpoint_id/run \
+              -H 'Content-Type: application/json' \
+              -H 'Authorization: Bearer Your_RunPod_API_Key' \
+              -d '{
+                "input": {
+                  "input_image_b64": "ここに画像のBase64文字列...",
+                  "prompt": "A beautiful landscape painting",
+                  "seed": 123,
+                  "total_second_length": 3.0
+                }
+              }'
+            ```
+        *   このリクエストは**すぐにレスポンスを返し**、ジョブID (`id`) と現在のステータス (`status`) を含みます。
+            ```json
+            {"id":"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx","status":"IN_QUEUE"}
+            ```
+
+    2.  **ステータスの確認と結果の取得 (`/status` エンドポイント):**
+        *   `/run` で取得したジョブID (`id`) を使って、`/status/{job_id}` エンドポイントに GET リクエストを送信します。
+            ```bash
+            # ステータス確認例 (endpoint_id, job_id, Your_RunPod_API_Key を置き換える)
+            curl -X GET https://api.runpod.ai/v2/your_endpoint_id/status/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+              -H 'Content-Type: application/json' \
+              -H 'Authorization: Bearer Your_RunPod_API_Key'
+            ```
+        *   動画生成が完了するまで、この `/status` エンドポイントを**定期的に呼び出す（ポーリングする）**必要があります。
+        *   処理中は `status` が `IN_PROGRESS` などになります。
+        *   処理が**成功**すると、`status` が `COMPLETED` になり、レスポンスボディの `output` キー内に生成結果が含まれます。
+            ```json
+            {
+              "delayTime": ...,
+              "executionTime": ...,
+              "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+              "input": { ... },
+              "output": { // ★★★ ここに結果が入る ★★★
+                "message": "Video generated successfully.",
+                "output_video_b64": "ここに非常に長いBase64エンコードされた動画データ..."
+              },
+              "status": "COMPLETED"
             }
-          }'
-        ```
-    *   上記コマンドはジョブIDを返します。ステータス確認エンドポイント (`/status/{job_id}`) を使用して結果を取得します。
+            ```
+        *   **`output.output_video_b64` の値が、生成された動画の Base64 エンコードされたデータです。**
+        *   もし処理が**失敗**した場合は、`status` が `FAILED` になり、`output` にはエラーメッセージが含まれます（例: `{"error": "エラー内容"}`）。
+
+    3.  **動画データのデコードと保存:**
+        *   `/status` エンドポイントから取得した `output_video_b64` の Base64 文字列をデコードします。
+        *   デコードしたバイナリデータを `.mp4` ファイルとして保存すれば、動画ファイルとして利用できます。
 
 ## ローカルでのテスト (RunPod Worker)
 
