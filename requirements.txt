@@ -1,4 +1,10 @@
-# Core ML Libraries (PyTorch is provided by base image)
+# Core ML Libraries
+# Pin torch and torchvision for compatibility, especially for local testing.
+# Ensure these are compatible with the base Docker image's CUDA version if possible.
+torch==2.3.1
+torchvision==0.18.1
+# torchaudio==2.3.1 # Optional, add if needed
+
 accelerate==1.6.0
 diffusers==0.33.1
 transformers==4.46.2
