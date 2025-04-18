@@ -6,7 +6,7 @@ einops
 safetensors
 
 # RunPod Serverless
-runpod
+runpod # Required for RunPod worker
 boto3 # For S3/B2 upload
 
 # Tokenizer Dependencies
