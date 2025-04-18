@@ -2,6 +2,7 @@ import os
 import json
 import runpod
 import traceback
+from runpod.serverless.utils import rp_upload # Import the upload utility
 
 # 既存のLambdaハンドラとモデル初期化関数をインポート
 from myproject.serverless_handler import lambda_handler, initialize_models, models_initialized
@@ -53,9 +54,41 @@ def runpod_worker(job):
         body = json.loads(body_str) # body は JSON 文字列なのでパース
 
         if status_code == 200:
-            # 成功時は lambda_handler の body の内容 (動画b64を含む辞書) をそのまま返す
-            print(f"Job {job.get('id', 'N/A')} completed successfully.")
-            return body
+            # --- Video Upload Logic ---
+            # IMPORTANT: This assumes serverless_handler.py's lambda_handler
+            # now returns {'temporary_video_path': '/path/to/video.mp4'}
+            # in its body upon success, instead of the base64 data.
+            temp_video_path = body.get("temporary_video_path")
+
+            if temp_video_path and os.path.exists(temp_video_path):
+                try:
+                    print(f"Uploading video from {temp_video_path} for job {job.get('id', 'N/A')}...")
+                    # Use rp_upload.upload_image (works for files) to upload to configured bucket
+                    uploaded_url = rp_upload.upload_image(job["id"], temp_video_path)
+                    print(f"Video uploaded successfully to: {uploaded_url}")
+                    # Return the URL instead of the file content
+                    return {
+                        "message": "Video generated and uploaded successfully.",
+                        "video_url": uploaded_url
+                    }
+                except Exception as upload_err:
+                    print(f"Error uploading video for job {job.get('id', 'N/A')}: {upload_err}")
+                    traceback.print_exc()
+                    return {"error": f"Video generated but upload failed: {upload_err}"}
+                finally:
+                    # Clean up the temporary file after attempting upload
+                    # (serverless_handler already does this, but belt-and-suspenders)
+                    if os.path.exists(temp_video_path):
+                        try:
+                            os.remove(temp_video_path)
+                            print(f"Cleaned up temporary file: {temp_video_path}")
+                        except OSError as rm_err:
+                            print(f"Warning: Could not remove temporary file {temp_video_path}: {rm_err}")
+            else:
+                error_message = "Lambda handler succeeded but did not return a valid temporary video path."
+                print(f"Job {job.get('id', 'N/A')} failed: {error_message}")
+                return {"error": error_message}
+            # --- End Video Upload Logic ---
         else:
             # 失敗時は body 内の error メッセージを抽出して返す
             error_message = body.get('error', 'Unknown error occurred in lambda_handler.')
