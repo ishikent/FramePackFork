@@ -508,11 +508,7 @@ def lambda_handler(event, context):
 
         # --- 出力処理 ---
         if output_video_path and os.path.exists(output_video_path):
-            print(f"Encoding output video {output_video_path} to Base64...")
-            with open(output_video_path, "rb") as vf:
-                video_data_b64 = base64.b64encode(vf.read()).decode('utf-8')
-
-            # 一時ファイル削除 (finallyブロックに移動)
+            # 一時ファイル削除は finally ブロックで行う（ただしコメントアウト）
             # print("Scheduling temporary files for cleanup...")
 
             handler_end_time = time.time()
@@ -525,7 +521,8 @@ def lambda_handler(event, context):
                 },
                 'body': json.dumps({
                     'message': 'Video generated successfully.',
-                    'output_video_b64': video_data_b64
+                    # Base64エンコードされたデータではなく、一時ファイルのパスを返す
+                    'temporary_video_path': output_video_path
                 })
             }
         else:
@@ -547,15 +544,16 @@ def lambda_handler(event, context):
     finally:
         # --- 一時ファイルクリーンアップ ---
         print("Cleaning up temporary files...")
-        if output_video_path and os.path.exists(output_video_path):
-            try:
-                os.remove(output_video_path)
-                print(f"Removed temporary video file: {output_video_path}")
-            except OSError as rm_err:
-                print(f"Warning: Could not remove temporary video file {output_video_path}: {rm_err}")
+        # runpod_handler.py がファイルをアップロードできるように、動画ファイルの削除をコメントアウト
+        # if output_video_path and os.path.exists(output_video_path):
+        #     try:
+        #         os.remove(output_video_path)
+        #         print(f"Removed temporary video file: {output_video_path}")
+        #     except OSError as rm_err:
+        #         print(f"Warning: Could not remove temporary video file {output_video_path}: {rm_err}")
         if input_image_temp_path and os.path.exists(input_image_temp_path):
              try:
-                 os.remove(input_image_temp_path)
+                 os.remove(input_image_temp_path) # 入力画像の一時ファイルは削除して良い
                  print(f"Removed temporary input image file: {input_image_temp_path}")
              except OSError as rm_err:
                  print(f"Warning: Could not remove temporary input image file {input_image_temp_path}: {rm_err}")
