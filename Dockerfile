@@ -41,9 +41,9 @@ COPY diffusers_helper/ ./diffusers_helper/
 # 以下の RUN コマンドをコメントアウトしてください。
 # Hugging Face Hubのプライベートリポジトリ等へのアクセスにトークンが必要な場合は、
 # docker build コマンドで --build-arg HF_TOKEN=your_token のように指定してください。
-# RUN echo "Attempting to pre-download models. This may take a very long time and increase image size significantly." && \
-#     python -c "from myproject.serverless_handler import initialize_models; initialize_models()" && \
-#     echo "Model pre-download attempt finished."
+RUN echo "Attempting to pre-download models. This may take a very long time and increase image size significantly." && \
+    python -c "from myproject.serverless_handler import initialize_models; initialize_models()" && \
+    echo "Model pre-download attempt finished."
 # モデル事前ダウンロードは serverless_handler ではなく runpod_handler 経由で行う場合
 # (ただし、runpod.serverless.start が実行されてしまうため、通常はコメントアウト推奨)
 # RUN echo "Attempting to pre-download models via runpod_handler (usually not recommended here)..." && \
