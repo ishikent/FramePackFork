@@ -5,7 +5,17 @@ import torch
 
 
 cpu = torch.device('cpu')
-gpu = torch.device(f'cuda:{torch.cuda.current_device()}')
+gpu = None
+if torch.cuda.is_available():
+    try:
+        gpu = torch.device(f'cuda:{torch.cuda.current_device()}')
+        print(f"CUDA available. Set gpu device to: {gpu}")
+    except Exception as e:
+        print(f"Warning: Could not initialize CUDA device even though torch.cuda.is_available() is True: {e}")
+        print("Falling back, setting 'gpu' device to None.")
+else:
+    print("CUDA not available. 'gpu' device set to None.")
+
 gpu_complete_modules = []
 
 
