@@ -150,39 +150,79 @@ FramePackは、初期画像とテキストプロンプトから動画を段階�
 
 ## ローカルでのテスト (RunPod Worker)
 
-RunPod ワーカーをローカルでテストするには、`runpod` ライブラリのローカルテスト機能を使用します。
+RunPod Serverless にデプロイする前に、ローカル環境でワーカーハンドラの動作を確認できます。主に2つの方法があります。
 
-1.  プロジェクトのルートディレクトリに `test_input.json` という名前のファイルを作成します。内容はAPIに送る `"input"` 部分と同じにします。
-    ```json
-    {
-        "input": {
-            "input_image_b64": "ここにテスト用の短い画像のBase64文字列...",
-            "prompt": "A test prompt",
-            "seed": 456,
-            "total_second_length": 1.0
+**方法1: ローカルのPython環境で直接実行する**
+
+Dockerコンテナをビルドせずに、ハンドラ関数の基本的なロジックや動画生成プロセスを確認するのに適しています。
+
+1.  **前提条件:**
+    *   ローカルマシンにPython環境がセットアップされていること。
+    *   PyTorchがインストールされていること（Dockerイメージとは異なり、別途インストールが必要です）。環境に合わせて適切なバージョンをインストールしてください (例: `pip install torch torchvision torchaudio`)。
+    *   `requirements.txt` に記載されている依存関係がインストールされていること (`pip install -r requirements.txt`)。
+
+2.  **`test_input.json` ファイルの作成:**
+    *   プロジェクトの**ルートディレクトリ**に `test_input.json` という名前のファイルを作成します。
+    *   ファイルの内容は、RunPod APIに送信するリクエストボディの `"input"` 部分と同じ形式にします。
+        ```json
+        {
+            "input": {
+                "input_image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", // テスト用の小さな画像のBase64文字列 (例: 1x1 赤ピクセル)
+                "prompt": "A small red square",
+                "n_prompt": "ugly, blurry", // オプション
+                "seed": 12345,
+                "total_second_length": 1.0, // テスト用に短く
+                "latent_window_size": 16,   // オプション (デフォルト値があれば不要)
+                "steps": 20,                // オプション (デフォルト値があれば不要)
+                "cfg": 7.0,                 // オプション (デフォルト値があれば不要)
+                "gpu_memory_preservation": 6.0 // オプション (デフォルト値があれば不要)
+            }
         }
-    }
-    ```
-    *(注意: `input_image_b64` には実際のBase64エンコードされた画像データを入れてください。テスト用に小さな画像を使うと良いでしょう。)*
+        ```
+    *   **重要:** `input_image_b64` には、テストに使用したい画像のBase64エンコード文字列を指定してください。オンラインのコンバーター等で生成できます。
+    *   他のパラメータも必要に応じて調整してください。
 
-2.  Dockerコンテナをビルドせずに、ローカルのPython環境（必要な依存関係がインストールされている）で直接 `runpod_handler.py` を実行します。
-    ```bash
-    # プロジェクトルートから実行
-    python myproject/runpod_handler.py
-    ```
-    *   `runpod` ライブラリは `test_input.json` を検出し、それを `job` として `runpod_worker` 関数に渡します。
-    *   コンソールに処理ログと最終的な出力（成功時は **アップロードを試行した旨のメッセージ** または **URLを含むJSON**、失敗時はエラーJSON）が表示されます。ローカルテストでは、環境変数が設定されていないため、実際のアップロードは失敗する可能性がありますが、ハンドラ関数の基本的な動作は確認できます。
+3.  **ハンドラースクリプトの実行:**
+    *   ターミナルを開き、プロジェクトの**ルートディレクトリ**に移動します。
+    *   以下のコマンドを実行します。
+        ```bash
+        python myproject/runpod_handler.py
+        ```
+    *   `runpod` ライブラリが自動的に `test_input.json` を検出し、その内容を `job` 引数として `runpod_worker` 関数に渡します。
 
-*   **Dockerコンテナ内でのローカルテスト:** Dockerコンテナを実行してテストすることも可能です。`test_input.json` をコンテナ内にコピーするか、ボリュームマウントする必要があります。S3/B2の環境変数を `-e` オプションで渡すことで、コンテナ内でのアップロードテストも可能です。
-    ```bash
-    # test_input.json と環境変数を渡して実行する例 (Linux/macOS)
-    docker run --rm --gpus all \
-      -v "$(pwd)/test_input.json:/app/test_input.json" \
-      -e BUCKET_ACCESS_KEY_ID="YOUR_B2_KEY_ID" \
-      -e BUCKET_SECRET_ACCESS_KEY="YOUR_B2_APP_KEY" \
-      -e BUCKET_ENDPOINT_URL="https://your-bucket.s3.region.backblazeb2.com" \
-      my-video-app
-    ```
+4.  **出力の確認:**
+    *   コンソールに処理ログ（モデルのロード、動画生成の進捗など）と最終的な結果が出力されます。
+    *   **注意:** ローカル環境でS3/B2の環境変数 (`BUCKET_ACCESS_KEY_ID` 等) が設定されていない場合、動画生成自体は成功しても、S3へのアップロード処理で失敗し、エラーメッセージを含むJSONが出力される可能性が高いです。これは正常な動作です（アップロード機能を除いたコアロジックのテストが目的）。
+
+**方法2: Dockerコンテナ内で実行する**
+
+実際のRunPod環境に近い状態で、S3/B2へのアップロードも含めてテストしたい場合に有効です。
+
+1.  **Dockerイメージのビルド:**
+    *   `README.md` の「Dockerイメージのビルド」セクションの手順に従って、Dockerイメージをビルドします (`docker build -t my-video-app .`)。
+
+2.  **`test_input.json` の作成:**
+    *   方法1と同様に、プロジェクトのルートディレクトリに `test_input.json` を作成します。
+
+3.  **Dockerコンテナの実行 (環境変数付き):**
+    *   以下のコマンドを実行してコンテナを起動します。`-v` で `test_input.json` をコンテナ内にマウントし、`-e` でS3/B2接続に必要な環境変数を渡します。
+        ```bash
+        # 例 (Linux/macOS) - 実際のキーとエンドポイントURLに置き換えてください
+        docker run --rm --gpus all \
+          -v "$(pwd)/test_input.json:/app/test_input.json" \
+          -e BUCKET_ACCESS_KEY_ID="YOUR_B2_KEY_ID" \
+          -e BUCKET_SECRET_ACCESS_KEY="YOUR_B2_APP_KEY" \
+          -e BUCKET_ENDPOINT_URL="https://your-bucket.s3.region.backblazeb2.com" \
+          my-video-app
+        ```
+        *   `--gpus all`: GPUを使用する場合に指定します。CPUのみでテストする場合は不要です。
+        *   `YOUR_B2_KEY_ID`, `YOUR_B2_APP_KEY`, `https://your-bucket.s3.region.backblazeb2.com` は、ご自身のストレージ情報に置き換えてください。
+        *   Windows PowerShell の場合は `-v "${PWD}/test_input.json:/app/test_input.json"` のようにパスを指定します。
+
+4.  **出力の確認:**
+    *   コンテナのログに、動画生成とS3/B2へのアップロード処理のログが出力されます。
+    *   環境変数と認証情報が正しく、ネットワーク接続に問題がなければ、アップロードが成功し、最終的に動画URLを含むJSONが出力されるはずです。
+    *   アップロードに失敗した場合は、関連するエラーメッセージが出力されます。
 
 ---
 
